@@ -105,14 +105,6 @@ struct PizzaOrder {
     total_pizzas: i64,
 }
 
-fn get_cost(pizza_type: PizzaType) -> f64 {
-    match pizza_type {
-        PizzaType::Pepperoni => 10.0,
-        PizzaType::BrieChickenAndMushroom => 15.0,
-        PizzaType::MightyVeg => 12.0,
-    }
-}
-
 fn get_daily_discount(current_day: chrono::Weekday) -> f64 {
     match current_day {
         chrono::Weekday::Mon => 0.9,
@@ -122,6 +114,16 @@ fn get_daily_discount(current_day: chrono::Weekday) -> f64 {
         chrono::Weekday::Fri => 1.0,
         chrono::Weekday::Sat => 1.0,
         chrono::Weekday::Sun => 1.05,
+    }
+}
+
+impl PizzaType {
+    fn get_cost(&self) -> f64 {
+        match self {
+            PizzaType::Pepperoni => 10.0,
+            PizzaType::BrieChickenAndMushroom => 15.0,
+            PizzaType::MightyVeg => 12.0,
+        }
     }
 }
 
@@ -166,7 +168,7 @@ impl PizzaOrder {
     }
 
     fn get_order_line_cost(&self, quantity: f64, pizza_type: PizzaType) -> f64 {
-        let pizza_cost = get_cost(pizza_type);
+        let pizza_cost = pizza_type.get_cost();
         let mut discount_multiplier = 1.0;
         if self.current_day == chrono::Weekday::Mon {
             match pizza_type {
