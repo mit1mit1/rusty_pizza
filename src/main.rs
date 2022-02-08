@@ -1,3 +1,4 @@
+use std::fmt;
 use chrono::Datelike;
 
 
@@ -85,11 +86,17 @@ mod tests {
         order.add(PizzaType::BrieChickenAndMushroom, 1);
         assert_eq!(order.total(), 15.0);
     }
-}
 
-fn main() {
-    let current_time = chrono::offset::Local::now();
-    println!("{}", current_time.date().weekday());
+    #[test]
+    fn test_receipt_works() {
+        // Why would anyone want anything other than a Brie and Veg Pepperoni sandwhich?
+        let mut order = PizzaOrder::new_order();
+        order.add(PizzaType::Pepperoni, 1);
+        order.add(PizzaType::BrieChickenAndMushroom, 1);
+        order.add(PizzaType::MightyVeg, 1);
+        order.add(PizzaType::Pepperoni, 1);
+        order.get_receipt();
+    }
 }
 
 #[derive(PartialEq, Clone, Copy)]
@@ -99,10 +106,49 @@ enum PizzaType {
     MightyVeg,
 }
 
+impl fmt::Display for PizzaType {
+    // This trait requires `fmt` with this exact signature.
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        // Write strictly the first element into the supplied output
+        // stream: `f`. Returns `fmt::Result` which indicates whether the
+        // operation succeeded or failed. Note that `write!` uses syntax which
+        // is very similar to `println!`.
+        match self {
+            PizzaType::Pepperoni => {
+                write!(f, "Pepperoni")
+            }
+            PizzaType::BrieChickenAndMushroom => {
+                write!(f, "Brie, Chicken and Mushroom")
+            }
+            PizzaType::MightyVeg => {
+                write!(f, "Mighty Veg")
+            }
+        }
+    }
+}
+
+#[derive(Clone, Copy)]
+struct OrderLine {
+    pizza_type: PizzaType,
+    quantity: i64,
+}
+
+impl fmt::Display for OrderLine {
+    // This trait requires `fmt` with this exact signature.
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        // Write strictly the first element into the supplied output
+        // stream: `f`. Returns `fmt::Result` which indicates whether the
+        // operation succeeded or failed. Note that `write!` uses syntax which
+        // is very similar to `println!`.
+        write!(f, "{} {}", self.quantity, self.pizza_type)
+    }
+}
+
 struct PizzaOrder {
     running_total: f64,
     current_day: chrono::Weekday,
     total_pizzas: i64,
+    order_lines: Vec<OrderLine>,
 }
 
 fn get_daily_discount(current_day: chrono::Weekday) -> f64 {
@@ -141,6 +187,7 @@ impl PizzaOrder {
             running_total: 0.0,
             current_day: today,
             total_pizzas: 0,
+            order_lines: vec![],
         };
     }
 
@@ -149,6 +196,7 @@ impl PizzaOrder {
             running_total: 0.0,
             current_day: chrono::Weekday::Tue,
             total_pizzas: 0,
+            order_lines: vec![],
         };
     }
 
@@ -167,11 +215,11 @@ impl PizzaOrder {
         return self.running_total * self.bonus_discount_multiplier();
     }
 
-    fn get_order_line_cost(&self, quantity: f64, pizza_type: PizzaType) -> f64 {
-        let pizza_cost = pizza_type.get_cost();
-        let mut discount_multiplier = 1.0;
+    fn get_order_line_cost(&self, order_line: &OrderLine) -> f64 {
+        let pizza_cost = order_line.pizza_type.get_cost();
+        let discount_multiplier: f64;
         if self.current_day == chrono::Weekday::Mon {
-            match pizza_type {
+            match order_line.pizza_type {
                 PizzaType::BrieChickenAndMushroom => {
                     discount_multiplier = 1.0;
                 }
@@ -182,12 +230,23 @@ impl PizzaOrder {
         } else {
             discount_multiplier = get_daily_discount(self.current_day);
         }
-        return pizza_cost * discount_multiplier * quantity;
+        return pizza_cost * discount_multiplier * order_line.quantity as f64;
     }
 
     // Another associated function, taking two arguments:
     fn add(&mut self, pizza_type: PizzaType, quantity: i64) -> () {
-        self.running_total += self.get_order_line_cost(quantity as f64, pizza_type);
+        let new_order_line = OrderLine {
+            pizza_type,
+            quantity,
+        };
+        self.order_lines.push(new_order_line);
+        self.running_total += self.get_order_line_cost(&new_order_line);
         self.total_pizzas += quantity;
+    }
+
+    fn get_receipt(&self) -> () {
+        for order_line in &self.order_lines {
+            println!("{}: ${}", order_line, self.get_order_line_cost(&order_line));
+        }
     }
 }
